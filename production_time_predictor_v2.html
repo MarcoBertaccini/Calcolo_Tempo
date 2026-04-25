@@ -1,0 +1,236 @@
+
+<style>
+#ptp * { box-sizing: border-box; }
+#ptp { padding: 1rem 0; font-size: 14px; }
+#ptp h2 { font-size: 18px; font-weight: 500; margin-bottom: 1.5rem; color: var(--color-text-primary); }
+#ptp h3 { font-size: 14px; font-weight: 500; margin-bottom: 10px; color: var(--color-text-primary); }
+#ptp label { font-size: 13px; color: var(--color-text-secondary); display: block; margin-bottom: 4px; }
+#ptp input, #ptp select { width: 100%; }
+#ptp .card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; margin-bottom: 1rem; }
+#ptp .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
+#ptp .metric { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 12px; }
+#ptp .metric .mlabel { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 4px; }
+#ptp .metric .mval { font-size: 22px; font-weight: 500; color: var(--color-text-primary); }
+#ptp table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+#ptp th { text-align: left; font-weight: 500; font-size: 12px; color: var(--color-text-secondary); padding: 6px 8px; border-bottom: 0.5px solid var(--color-border-tertiary); }
+#ptp td { padding: 7px 8px; border-bottom: 0.5px solid var(--color-border-tertiary); color: var(--color-text-primary); vertical-align: middle; }
+#ptp td input { height: 30px; font-size: 13px; }
+#ptp .add-btn { font-size: 13px; color: var(--color-text-secondary); background: none; border: 0.5px dashed var(--color-border-secondary); border-radius: var(--border-radius-md); padding: 6px 14px; cursor: pointer; margin-top: 8px; width: 100%; }
+#ptp .add-btn:hover { background: var(--color-background-secondary); }
+#ptp .del-btn { background: none; border: none; color: var(--color-text-secondary); cursor: pointer; font-size: 16px; padding: 0 4px; }
+#ptp .del-btn:hover { color: var(--color-text-danger); }
+#ptp .machine-bar { height: 28px; border-radius: 4px; background: var(--color-background-info); border: 0.5px solid var(--color-border-info); display: flex; align-items: center; padding: 0 10px; font-size: 12px; color: var(--color-text-info); margin-bottom: 6px; }
+#ptp .section-divider { height: 0.5px; background: var(--color-border-tertiary); margin: 1.5rem 0; }
+#ptp #results { display: none; }
+#ptp .warning { font-size: 12px; color: var(--color-text-warning); background: var(--color-background-warning); border: 0.5px solid var(--color-border-warning); border-radius: var(--border-radius-md); padding: 8px 12px; margin-top: 8px; }
+#ptp .info-box { font-size: 12px; color: var(--color-text-info); background: var(--color-background-info); border: 0.5px solid var(--color-border-info); border-radius: var(--border-radius-md); padding: 8px 12px; margin-bottom: 10px; }
+#ptp .success-box { font-size: 12px; color: var(--color-text-success); background: var(--color-background-success); border: 0.5px solid var(--color-border-success); border-radius: var(--border-radius-md); padding: 8px 12px; margin-bottom: 10px; }
+#ptp .import-area { border: 1.5px dashed var(--color-border-secondary); border-radius: var(--border-radius-md); padding: 1.25rem; text-align: center; cursor: pointer; transition: background 0.15s; background: var(--color-background-secondary); margin-bottom: 10px; }
+#ptp .import-area:hover { background: var(--color-background-tertiary); }
+#ptp .import-area .il { font-size: 14px; font-weight: 500; color: var(--color-text-primary); }
+#ptp .import-area .is { font-size: 12px; color: var(--color-text-secondary); margin-top: 4px; }
+</style>
+
+<div id="ptp">
+  <h2>Predittore tempi di produzione</h2>
+
+  <div class="card">
+    <h3>Catalogo pezzi</h3>
+    <div class="info-box">Formato Excel atteso: colonna A = codice pezzo, colonna B = tempo ciclo in secondi, colonna C = descrizione (opzionale). Prima riga = intestazioni.</div>
+    <div class="import-area" onclick="document.getElementById('xl-input').click()">
+      <div class="il">Importa da Excel</div>
+      <div class="is">.xlsx · .xls</div>
+      <input type="file" id="xl-input" style="display:none" accept=".xlsx,.xls">
+    </div>
+    <div id="import-status"></div>
+    <table id="catalogue-table">
+      <thead><tr><th style="width:30%">Codice</th><th style="width:30%">Ciclo (s)</th><th style="width:35%">Descrizione</th><th style="width:5%"></th></tr></thead>
+      <tbody id="catalogue-body"></tbody>
+    </table>
+    <button class="add-btn" onclick="addCatalogueRow()">+ aggiungi pezzo</button>
+  </div>
+
+  <div class="card">
+    <h3>Ordine</h3>
+    <div class="row">
+      <div>
+        <label>Codice pezzo</label>
+        <select id="order-piece" onchange="onPieceSelect()"></select>
+      </div>
+      <div>
+        <label>Macchine disponibili</label>
+        <input type="number" id="machines" value="2" min="1" max="20" oninput="calculate()">
+      </div>
+    </div>
+    <h3 style="margin-top:4px">Varianti e quantità</h3>
+    <table id="variants-table">
+      <thead><tr><th style="width:45%">Variante</th><th style="width:45%">Quantità (pz)</th><th style="width:10%"></th></tr></thead>
+      <tbody id="variants-body"></tbody>
+    </table>
+    <button class="add-btn" onclick="addVariantRow()">+ aggiungi variante</button>
+  </div>
+
+  <div id="results">
+    <div class="section-divider"></div>
+    <h3>Risultati</h3>
+    <div class="row" style="margin-bottom:1rem">
+      <div class="metric"><div class="mlabel">Pezzi totali</div><div class="mval" id="r-total">—</div></div>
+      <div class="metric"><div class="mlabel">Tempo macchina totale</div><div class="mval" id="r-time">—</div></div>
+      <div class="metric"><div class="mlabel">Macchine</div><div class="mval" id="r-machines">—</div></div>
+      <div class="metric"><div class="mlabel">Tempo stimato</div><div class="mval" id="r-finish">—</div></div>
+    </div>
+    <h3>Suddivisione macchine</h3>
+    <div id="machine-bars"></div>
+    <div id="variant-note"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+let catalogue = [{ code: '14516', cycleSeconds: 330, label: 'Inserto metallico A' }];
+let variants = [{ id: 1, name: '14516-001', qty: 0 }, { id: 2, name: '14516-002', qty: 0 }];
+let nextVId = 3;
+
+function fmtTime(s) {
+  s = Math.round(s);
+  if (s < 60) return s + 's';
+  if (s < 3600) { const m = Math.floor(s/60), sec = s%60; return m + 'h ' + (sec > 0 ? sec + 'm' : ''); }
+  const h = Math.floor(s/3600), m = Math.round((s%3600)/60);
+  return h + 'h ' + (m > 0 ? m + 'm' : '');
+}
+
+document.getElementById('xl-input').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const wb = XLSX.read(ev.target.result, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+      const imported = [];
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        if (!r[0] || !r[1]) continue;
+        const code = String(r[0]).trim();
+        const secs = parseFloat(r[1]);
+        const label = r[2] ? String(r[2]).trim() : '';
+        if (code && !isNaN(secs) && secs > 0) imported.push({ code, cycleSeconds: secs, label });
+      }
+      if (imported.length === 0) {
+        document.getElementById('import-status').innerHTML = '<div class="warning">Nessun dato valido trovato. Controlla il formato: colonna A = codice, colonna B = secondi.</div>';
+        return;
+      }
+      catalogue = imported;
+      document.getElementById('import-status').innerHTML = '<div class="success-box">Importati ' + imported.length + ' pezzi da ' + file.name + '</div>';
+      renderCatalogue();
+      calculate();
+    } catch(err) {
+      document.getElementById('import-status').innerHTML = '<div class="warning">Errore nella lettura del file: ' + err.message + '</div>';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  e.target.value = '';
+});
+
+function renderCatalogue() {
+  const body = document.getElementById('catalogue-body');
+  body.innerHTML = '';
+  catalogue.forEach((p, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><input type="text" value="${p.code}" oninput="catalogue[${i}].code=this.value;renderOrderSelect();calculate()"></td>
+      <td><input type="number" value="${p.cycleSeconds}" min="1" oninput="catalogue[${i}].cycleSeconds=+this.value;calculate()"></td>
+      <td><input type="text" value="${p.label}" oninput="catalogue[${i}].label=this.value;renderOrderSelect()"></td>
+      <td><button class="del-btn" onclick="delCatalogue(${i})">x</button></td>`;
+    body.appendChild(tr);
+  });
+  renderOrderSelect();
+}
+
+function addCatalogueRow() {
+  catalogue.push({ code: '', cycleSeconds: 60, label: '' });
+  renderCatalogue();
+}
+
+function delCatalogue(i) {
+  if (catalogue.length === 1) return;
+  catalogue.splice(i, 1);
+  renderCatalogue();
+  calculate();
+}
+
+function renderOrderSelect() {
+  const sel = document.getElementById('order-piece');
+  const cur = sel.value;
+  sel.innerHTML = catalogue.map(p => `<option value="${p.code}">${p.code}${p.label ? ' — ' + p.label : ''}</option>`).join('');
+  if (cur && catalogue.find(p => p.code === cur)) sel.value = cur;
+}
+
+function onPieceSelect() { calculate(); }
+
+function renderVariants() {
+  const body = document.getElementById('variants-body');
+  body.innerHTML = '';
+  variants.forEach((v, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><input type="text" value="${v.name}" oninput="variants[${i}].name=this.value;calculate()"></td>
+      <td><input type="number" value="${v.qty}" min="0" oninput="variants[${i}].qty=+this.value;calculate()"></td>
+      <td><button class="del-btn" onclick="delVariant(${i})">x</button></td>`;
+    body.appendChild(tr);
+  });
+  calculate();
+}
+
+function addVariantRow() {
+  const sel = document.getElementById('order-piece');
+  const code = sel.value || '';
+  variants.push({ id: nextVId++, name: code + '-00' + variants.length, qty: 0 });
+  renderVariants();
+}
+
+function delVariant(i) {
+  if (variants.length === 1) return;
+  variants.splice(i, 1);
+  renderVariants();
+}
+
+function calculate() {
+  const pieceCode = document.getElementById('order-piece').value;
+  const piece = catalogue.find(p => p.code === pieceCode);
+  const machines = Math.max(1, parseInt(document.getElementById('machines').value) || 1);
+  const results = document.getElementById('results');
+  if (!piece) { results.style.display = 'none'; return; }
+  const totalPcs = variants.reduce((s, v) => s + (v.qty || 0), 0);
+  if (totalPcs === 0) { results.style.display = 'none'; return; }
+  results.style.display = 'block';
+  const totalSeconds = totalPcs * piece.cycleSeconds;
+  const perMachine = Math.ceil(totalPcs / machines);
+  const finishSeconds = perMachine * piece.cycleSeconds;
+  document.getElementById('r-total').textContent = totalPcs.toLocaleString('it-IT');
+  document.getElementById('r-time').textContent = fmtTime(totalSeconds);
+  document.getElementById('r-machines').textContent = machines;
+  document.getElementById('r-finish').textContent = fmtTime(finishSeconds);
+  const bars = document.getElementById('machine-bars');
+  bars.innerHTML = '';
+  let remaining = totalPcs;
+  for (let m = 0; m < machines; m++) {
+    const assigned = Math.min(perMachine, remaining);
+    if (assigned <= 0) break;
+    remaining -= assigned;
+    const bar = document.createElement('div');
+    bar.className = 'machine-bar';
+    bar.textContent = 'Macchina ' + (m + 1) + ' — ' + assigned.toLocaleString('it-IT') + ' pz — ' + fmtTime(assigned * piece.cycleSeconds);
+    bars.appendChild(bar);
+  }
+  const note = document.getElementById('variant-note');
+  const active = variants.filter(v => v.qty > 0);
+  if (active.length > 1) {
+    note.innerHTML = '<div class="warning">Cambio variante: ' + active.map(v => v.name + ' (' + v.qty + ' pz)').join(' → ') + '. Avvisare i macchinisti.</div>';
+  } else {
+    note.innerHTML = '';
+  }
+}
+
+renderCatalogue();
+renderVariants();
+</script>
